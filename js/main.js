@@ -1,6 +1,5 @@
 import { Stepper } from '/stepper.js'
 import * as wifi from 'wifi'
-import { startHttp } from '/http.js'
 
 const PIN_EN = 4
 const PIN_STEP = 5
@@ -10,6 +9,11 @@ const PIN_DIR = 6
 const STA_SSID = 'YOUR_SSID'
 const STA_PWD = 'YOUR_PASSWORD'
 const HTTP_PORT = 80
+
+const SERVER_INFO = {
+  name: 'beshell-step',
+  version: '0.1.0',
+}
 
 /** C major up and down (C4 → C5 → C4). */
 const SCALE = [
@@ -47,14 +51,33 @@ motor.playSequence({
   }
   console.log('WiFi connected, IP:', status.ip)
 
-  startHttp(HTTP_PORT, () => ({
-    ok: true,
-    server: { name: 'beshell-step', version: '0.1.0' },
-    stepper: motor.status(),
-  }))
+  // Keep the link alive on stage: no modem sleep (fewer beacon timeouts)
+  // and a daemon that re-connects if the AP drops us.
+  wifi.setPS(0)
+  wifi.startStaDeamon(5000)
+  wifi.on('sta.disconnected', () => {
+    console.log('WiFi lost, reconnecting...')
+  })
+  wifi.on('ip.got', (info) => {
+    console.log('WiFi back, IP:', info.ip)
+  })
+
+  const { HttpServer } = await import('/http.js')
+  const { McpServer } = await import('/mcp.js')
+  const { createStepperTools } = await import('/tools.js')
+
+  const http = new HttpServer(HTTP_PORT)
+  const mcp = new McpServer({
+    serverInfo: SERVER_INFO,
+    tools: createStepperTools(motor),
+    getStatus: () => ({ stepper: motor.status() }),
+  })
+  mcp.mount(http)
+  http.listen()
 
   console.log('curl http://' + status.ip + '/health')
-  console.log('(MCP /mcp — next tag)')
+  console.log('MCP URL: http://' + status.ip + '/mcp')
+  console.log('System ready.')
 })().catch((e) => {
   console.log('Startup error:', e)
 })

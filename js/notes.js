@@ -24,6 +24,9 @@ export const NOTES = {
   A7: 3520, As7: 3729, B7: 3951, C8: 4186,
 }
 
+/** Scientific pitch names in NOTES table order. */
+export const NOTE_NAMES = Object.keys(NOTES)
+
 /**
  * @param {string} name
  * @returns {number} frequency Hz (integer)

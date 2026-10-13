@@ -24,7 +24,13 @@ set(JS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../js")
 add_custom_command(
     OUTPUT "${JS_IMAGE}"
     COMMAND "${MKLITTLEFS}" -c "${JS_DIR}" -p 4096 -b 4096 -s 1048576 "${JS_IMAGE}"
-    DEPENDS "${JS_DIR}/main.js" "${JS_DIR}/stepper.js" "${JS_DIR}/notes.js" "${JS_DIR}/http.js"
+    DEPENDS
+        "${JS_DIR}/main.js"
+        "${JS_DIR}/stepper.js"
+        "${JS_DIR}/notes.js"
+        "${JS_DIR}/http.js"
+        "${JS_DIR}/mcp.js"
+        "${JS_DIR}/tools.js"
     VERBATIM
 )
 

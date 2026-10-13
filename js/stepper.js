@@ -11,7 +11,7 @@ const TICK_MS = 5
 const DIR_CW = 0
 const DURATION_MS_MIN = 1
 const DURATION_MS_MAX = 5000
-const MAX_SEQUENCE_NOTES = 256
+const MAX_SEQUENCE_NOTES = 2048
 
 const pwm = gpio.pwm
 
@@ -268,14 +268,16 @@ export class Stepper {
     return { stopped: true, lastNote }
   }
 
+  /** Snapshot for /health and MCP. */
   status() {
     return {
       ready: this._ready,
-      playing: this._currentNote !== null || this._job !== null,
+      playing: this._job != null,
       note: this._currentNote,
-      sequence: this._seqLength > 0
-        ? { index: this._seqIndex, length: this._seqLength }
-        : null,
+      sequence:
+        this._seqLength > 0
+          ? { index: this._seqIndex, length: this._seqLength }
+          : null,
     }
   }
 
@@ -308,19 +310,6 @@ export class Stepper {
       timer: PWM_TIMER,
     })
     this._pwmConfigured = true
-  }
-
-  /** Snapshot for /health and later MCP. */
-  status() {
-    return {
-      playing: this._job != null,
-      note: this._currentNote,
-      dir: DIR_CW,
-      sequence:
-        this._seqLength > 0
-          ? { index: this._seqIndex, length: this._seqLength }
-          : null,
-    }
   }
 
   /**
