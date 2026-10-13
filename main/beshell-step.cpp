@@ -23,6 +23,7 @@ static void beshell_task(void *pvParameters)
 
     BeShell beshell;
     beshell.use<FS>();
+    beshell.use<WiFi>();
     FS::mount("/", new LittleFS("js", true));
     beshell.main("/main.js");
 }

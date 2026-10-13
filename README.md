@@ -3,32 +3,25 @@
 Демо для мастер-класса HolyJS:  
 **«JS, микроконтроллеры и ИИ: MCP выходит в реальный мир»**
 
-Текущий тег **`melody`**: BeShell + `Stepper.playSequence`, гамма **C-dur вверх и вниз**.
+Тег **`wifi-sta`**: всё из `melody` **плюс** подключение к существующей Wi‑Fi сети (STA), IP в консоль. Впиши `STA_SSID` / `STA_PWD` в `js/main.js` перед прошивкой.
 
 | | |
 |---|---|
 | Chip | ESP32-S3, **16MB flash**, **Octal PSRAM** |
 | IDF | **5.5.x** |
 | Target | `esp32s3` |
-| JS | LittleFS partition `js` → `/main.js` |
-| Stepper | EN **4** · STEP **5** · DIR **6** (PWM tone, DIR fixed CW) |
+| JS | LittleFS `js` → `/main.js` |
+| Stepper | EN **4** · STEP **5** · DIR **6** |
+| Wi‑Fi | STA · SSID/PWD в `js/main.js` · IP в serial |
 
-Предыдущие: `hello` · `stepper-tone`. Далее: `wifi-sta` → `http` → `mcp`.
-
----
-
-## Требования
-
-- Плата ESP32-S3 с **16MB flash** и **Octal PSRAM** (см. `sdkconfig.defaults`)
-- Драйвер шаговика (STEP/DIR/EN) на пинах выше
-- [ESP-IDF 5.5](https://docs.espressif.com/projects/esp-idf/en/v5.5.2/esp32s3/get-started/index.html)
+Предыдущие: `hello` · `stepper-tone` · `melody`.
 
 ---
 
 ## Быстрый старт
 
 ```bash
-git clone -b melody https://github.com/andrewkuzmenko/holyjs-mcu-workshop.git mcu-js-holy-workshop
+git clone -b wifi-sta https://github.com/andrewkuzmenko/holyjs-mcu-workshop.git mcu-js-holy-workshop
 cd mcu-js-holy-workshop
 
 . $IDF_PATH/export.sh
@@ -37,60 +30,24 @@ idf.py build
 idf.py flash monitor
 ```
 
-В мониторе:
+В мониторе: гамма C-dur, затем примерно:
 
 ```text
-Stepper ready; C major up/down, bpm 120
+Connecting to WiFi "YOUR_SSID"...
+WiFi connected, IP: 192.168.x.x
+(no HTTP yet — same melody, now on your network)
 ```
 
-и гамма C4→C5→C4 на моторе.
-
-С `stepper-tone` обычно достаточно обновить JS-раздел:
-
-```bash
-idf.py build
-parttool.py --port PORT write_partition --partition-name=js --input build/js.bin
-```
+С `melody` → `wifi-sta` нужна **полная** прошивка: в C++ добавлен `beshell.use<WiFi>()`.
 
 ---
 
-## API (кратко)
+## Что добавилось на этом теге
 
-```javascript
-import { Stepper } from '/stepper.js'
+- C++: `beshell.use<WiFi>()`
+- JS: `import * as wifi from 'wifi'` + `wifi.connect` / `wifi.waitIP`
 
-const motor = new Stepper({ en: 15, step: 16, dir: 18 })
-motor.init()
-
-motor.playNote('A4', 5000)
-
-motor.playSequence({
-  notes: [
-    { note: 'C4' },
-    { note: 'E4', durationMs: 300 },
-    { note: 'rest', beats: 1 },
-  ],
-  bpm: 120,
-  defaultBeats: 1,
-  legato: true,
-})
-```
-
-Элемент `notes[]` всегда `{ note, durationMs? | beats? }`.  
-Длительность: `durationMs` → `beats`+`bpm` → `defaultBeats`+`bpm` → `defaultDurationMs`.  
-`durationMs` clamp **1..5000**. Rest: `{ note: 'rest', … }`.
-
-Частота — stock `gpio.pwm.config` (без патча `setFreq`).
-
----
-
-## Файлы
-
-```text
-js/main.js       — C major up/down через playSequence
-js/stepper.js    — class Stepper (playNote + playSequence)
-js/notes.js      — целые Гц A0–C8
-```
+Пока **нет** HTTP/`/health` (тег `http`) и MCP (тег `mcp`).
 
 ---
 
@@ -99,13 +56,11 @@ js/notes.js      — целые Гц A0–C8
 | Tag | Содержимое |
 |-----|------------|
 | `hello` | `console.log` |
-| `stepper-tone` | одна нота A4 5 с |
+| `stepper-tone` | одна нота A4 |
 | `melody` | C-dur up/down |
 | `wifi-sta` | melody + Wi‑Fi STA |
-| `http` | + HTTP `/health` |
+| `http` | + HTTP `/health` (следующий) |
 | `mcp` | HTTP + MCP tools |
-
-Далее: `wifi-sta` → `http` → `mcp`.
 
 ## Как залить на MCU только JS
 
@@ -113,7 +68,6 @@ js/notes.js      — целые Гц A0–C8
 - `esptool.py --chip esp32s3 -p PORT write_flash 0x310000 build/js.bin`
 
 После прошивки — reset или `idf.py -p PORT monitor`.
-
 ## Если `idf.py build` падает на `mklittlefs: Permission denied`
 
 Это нормально при первой сборке: менеджер компонентов скачивает `beshell` без бита исполнения на утилите, которая собирает образ JS. Выставить права и повторить:

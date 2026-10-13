@@ -1,8 +1,13 @@
 import { Stepper } from '/stepper.js'
+import * as wifi from 'wifi'
 
 const PIN_EN = 4
 const PIN_STEP = 5
 const PIN_DIR = 6
+
+/** Existing Wi-Fi network (STA mode). Replace before flashing. */
+const STA_SSID = 'YOUR_SSID'
+const STA_PWD = 'YOUR_PASSWORD'
 
 /** C major up and down (C4 → C5 → C4). */
 const SCALE = [
@@ -23,4 +28,23 @@ motor.playSequence({
   bpm: 120,
   defaultBeats: 1,
   legato: true,
+})
+
+;(async () => {
+  console.log('Connecting to WiFi "' + STA_SSID + '"...')
+  const ok = await wifi.connect(STA_SSID, STA_PWD, 10)
+  if (!ok) {
+    console.log('Failed to connect to "' + STA_SSID + '"')
+    return
+  }
+
+  const status = await wifi.waitIP()
+  if (!status || !status.ip) {
+    console.log('Connected, but no IP received')
+    return
+  }
+  console.log('WiFi connected, IP:', status.ip)
+  console.log('(no HTTP yet — same melody, now on your network)')
+})().catch((e) => {
+  console.log('WiFi startup error:', e)
 })
