@@ -1,5 +1,6 @@
 import { Stepper } from '/stepper.js'
 import * as wifi from 'wifi'
+import { startHttp } from '/http.js'
 
 const PIN_EN = 4
 const PIN_STEP = 5
@@ -8,6 +9,7 @@ const PIN_DIR = 6
 /** Existing Wi-Fi network (STA mode). Replace before flashing. */
 const STA_SSID = 'YOUR_SSID'
 const STA_PWD = 'YOUR_PASSWORD'
+const HTTP_PORT = 80
 
 /** C major up and down (C4 → C5 → C4). */
 const SCALE = [
@@ -44,7 +46,15 @@ motor.playSequence({
     return
   }
   console.log('WiFi connected, IP:', status.ip)
-  console.log('(no HTTP yet — same melody, now on your network)')
+
+  startHttp(HTTP_PORT, () => ({
+    ok: true,
+    server: { name: 'beshell-step', version: '0.1.0' },
+    stepper: motor.status(),
+  }))
+
+  console.log('curl http://' + status.ip + '/health')
+  console.log('(MCP /mcp — next tag)')
 })().catch((e) => {
-  console.log('WiFi startup error:', e)
+  console.log('Startup error:', e)
 })

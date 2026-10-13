@@ -310,6 +310,19 @@ export class Stepper {
     this._pwmConfigured = true
   }
 
+  /** Snapshot for /health and later MCP. */
+  status() {
+    return {
+      playing: this._job != null,
+      note: this._currentNote,
+      dir: DIR_CW,
+      sequence:
+        this._seqLength > 0
+          ? { index: this._seqIndex, length: this._seqLength }
+          : null,
+    }
+  }
+
   /**
    * Mute STEP pulses. Prefer write(0) over pwm.stop():
    * stop() also drops the pin↔channel map in BeShell, so the next write would throw

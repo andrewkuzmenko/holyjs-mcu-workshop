@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <beshell/BeShell.hpp>
 #include <beshell/basic/Console.hpp>
+#include <beshell/mg/Mg.hpp>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
 using namespace std;
 using namespace be;
+using namespace be::mg;
 
 /** Копируем вывод JS в консоль ESP. */
 static void console_to_stdout(const char * data, size_t len)
@@ -24,6 +26,7 @@ static void beshell_task(void *pvParameters)
     BeShell beshell;
     beshell.use<FS>();
     beshell.use<WiFi>();
+    beshell.use<Mg>();
     FS::mount("/", new LittleFS("js", true));
     beshell.main("/main.js");
 }

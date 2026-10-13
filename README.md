@@ -3,7 +3,7 @@
 Демо для мастер-класса HolyJS:  
 **«JS, микроконтроллеры и ИИ: MCP выходит в реальный мир»**
 
-Тег **`wifi-sta`**: всё из `melody` **плюс** подключение к существующей Wi‑Fi сети (STA), IP в консоль. Впиши `STA_SSID` / `STA_PWD` в `js/main.js` перед прошивкой.
+Текущий тег **`http`**: всё из `wifi-sta` **плюс** HTTP `/health` (без MCP).
 
 | | |
 |---|---|
@@ -13,15 +13,16 @@
 | JS | LittleFS `js` → `/main.js` |
 | Stepper | EN **4** · STEP **5** · DIR **6** |
 | Wi‑Fi | STA · SSID/PWD в `js/main.js` · IP в serial |
+| HTTP | `GET /health` → JSON `{ ok, server, stepper }` |
 
-Предыдущие: `hello` · `stepper-tone` · `melody`.
+Предыдущие: `hello` · `stepper-tone` · `melody` · `wifi-sta`.
 
 ---
 
 ## Быстрый старт
 
 ```bash
-git clone -b wifi-sta https://github.com/andrewkuzmenko/holyjs-mcu-workshop.git mcu-js-holy-workshop
+git clone -b http https://github.com/andrewkuzmenko/holyjs-mcu-workshop.git mcu-js-holy-workshop
 cd mcu-js-holy-workshop
 
 . $IDF_PATH/export.sh
@@ -30,24 +31,26 @@ idf.py build
 idf.py flash monitor
 ```
 
-В мониторе: гамма C-dur, затем примерно:
+В мониторе: гамма C-dur, STA connect, затем:
 
 ```text
-Connecting to WiFi "YOUR_SSID"...
 WiFi connected, IP: 192.168.x.x
-(no HTTP yet — same melody, now on your network)
+HTTP listening on 0.0.0.0:80 (/health)
+curl http://192.168.x.x/health
 ```
 
-С `melody` → `wifi-sta` нужна **полная** прошивка: в C++ добавлен `beshell.use<WiFi>()`.
+С `wifi-sta` → `http` нужна **полная** прошивка: в C++ добавлен `beshell.use<Mg>()`, зависимость `become-cool/beshell-mg`.
 
 ---
 
 ## Что добавилось на этом теге
 
-- C++: `beshell.use<WiFi>()`
-- JS: `import * as wifi from 'wifi'` + `wifi.connect` / `wifi.waitIP`
+- Component: `become-cool/beshell-mg`
+- C++: `beshell.use<Mg>()`
+- JS: `js/http.js` → `startHttp` + `GET /` и `/health`
+- `Stepper.status()` для поля `stepper` в health
 
-Пока **нет** HTTP/`/health` (тег `http`) и MCP (тег `mcp`).
+Пока **нет** `/mcp` (следующий тег `mcp`).
 
 ---
 
@@ -59,7 +62,7 @@ WiFi connected, IP: 192.168.x.x
 | `stepper-tone` | одна нота A4 |
 | `melody` | C-dur up/down |
 | `wifi-sta` | melody + Wi‑Fi STA |
-| `http` | + HTTP `/health` (следующий) |
+| `http` | wifi-sta + HTTP `/health` |
 | `mcp` | HTTP + MCP tools |
 
 ## Как залить на MCU только JS
@@ -68,6 +71,7 @@ WiFi connected, IP: 192.168.x.x
 - `esptool.py --chip esp32s3 -p PORT write_flash 0x310000 build/js.bin`
 
 После прошивки — reset или `idf.py -p PORT monitor`.
+
 ## Если `idf.py build` падает на `mklittlefs: Permission denied`
 
 Это нормально при первой сборке: менеджер компонентов скачивает `beshell` без бита исполнения на утилите, которая собирает образ JS. Выставить права и повторить:
