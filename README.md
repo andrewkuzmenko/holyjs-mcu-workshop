@@ -3,7 +3,7 @@
 Демо для мастер-класса HolyJS:  
 **«JS, микроконтроллеры и ИИ: MCP выходит в реальный мир»**
 
-Текущий тег **`stepper-tone`**: BeShell + класс `Stepper`, одна нота **A4** на **5 с**, затем silence.
+Текущий тег **`melody`**: BeShell + `Stepper.playSequence`, гамма **C-dur вверх и вниз**.
 
 | | |
 |---|---|
@@ -13,7 +13,7 @@
 | JS | LittleFS partition `js` → `/main.js` |
 | Stepper | EN **4** · STEP **5** · DIR **6** (PWM tone, DIR fixed CW) |
 
-Предыдущие: `hello`. Далее: `melody` → `wifi-sta` → `http` → `mcp`.
+Предыдущие: `hello` · `stepper-tone`. Далее: `wifi-sta` → `http` → `mcp`.
 
 ---
 
@@ -28,11 +28,10 @@
 ## Быстрый старт
 
 ```bash
-git clone -b stepper-tone https://github.com/andrewkuzmenko/holyjs-mcu-workshop.git mcu-js-holy-workshop
+git clone -b melody https://github.com/andrewkuzmenko/holyjs-mcu-workshop.git mcu-js-holy-workshop
 cd mcu-js-holy-workshop
 
 . $IDF_PATH/export.sh
-
 idf.py set-target esp32s3
 idf.py build
 idf.py flash monitor
@@ -41,67 +40,61 @@ idf.py flash monitor
 В мониторе:
 
 ```text
-Stepper ready; playing A4 for 5000 ms
+Stepper ready; C major up/down, bpm 120
 ```
 
-и ~5 с тона на моторе, затем silence.
+и гамма C4→C5→C4 на моторе.
 
-(`console.log` → stdout через `Console::writeHandler` в `main/beshell-step.cpp`.)
-
-Выход из monitor: `Ctrl+]`.
-
-`managed_components/`, `build/`, `sdkconfig` появятся при первой сборке (в git не коммитятся).
-
----
-
-## Обновить только JS на плате
-
-Если C++ не менялся:
+С `stepper-tone` обычно достаточно обновить JS-раздел:
 
 ```bash
-. $IDF_PATH/export.sh
 idf.py build
 parttool.py --port PORT write_partition --partition-name=js --input build/js.bin
 ```
 
-Эквивалент через `esptool` (offset `0x310000` для текущего `partitions.csv`):
-
-```bash
-idf.py build
-esptool.py --chip esp32s3 -p PORT write_flash 0x310000 build/js.bin
-```
-
 ---
 
-## Что в репозитории
-
-```text
-js/main.js              — пины + new Stepper → init → playNote('A4', 5000)
-js/stepper.js           — class Stepper (tone; playSequence — тег melody)
-js/notes.js             — целые Гц A0–C8 для LEDC
-main/beshell-step.cpp   — BeShell + console mirror
-main/idf_component.yml  — become-cool/beshell
-```
-
-Частота ноты задаётся через stock BeShell `gpio.pwm.config` (отдельного `setFreq` нет).
+## API (кратко)
 
 ```javascript
 import { Stepper } from '/stepper.js'
 
-const PIN_EN = 4
-const PIN_STEP = 5
-const PIN_DIR = 6
-
-const motor = new Stepper({ en: PIN_EN, step: PIN_STEP, dir: PIN_DIR })
+const motor = new Stepper({ en: 15, step: 16, dir: 18 })
 motor.init()
+
 motor.playNote('A4', 5000)
+
+motor.playSequence({
+  notes: [
+    { note: 'C4' },
+    { note: 'E4', durationMs: 300 },
+    { note: 'rest', beats: 1 },
+  ],
+  bpm: 120,
+  defaultBeats: 1,
+  legato: true,
+})
 ```
 
-`durationMs`: `null`/`undefined` — играет до `stop()`; иначе clamp в **1..5000** мс.
+Элемент `notes[]` всегда `{ note, durationMs? | beats? }`.  
+Длительность: `durationMs` → `beats`+`bpm` → `defaultBeats`+`bpm` → `defaultDurationMs`.  
+`durationMs` clamp **1..5000**. Rest: `{ note: 'rest', … }`.
+
+Частота — stock `gpio.pwm.config` (без патча `setFreq`).
 
 ---
 
-## Теги мастер-класса
+## Файлы
+
+```text
+js/main.js       — C major up/down через playSequence
+js/stepper.js    — class Stepper (playNote + playSequence)
+js/notes.js      — целые Гц A0–C8
+```
+
+---
+
+## Теги
 
 | Tag | Содержимое |
 |-----|------------|
@@ -112,7 +105,14 @@ motor.playNote('A4', 5000)
 | `http` | + HTTP `/health` |
 | `mcp` | HTTP + MCP tools |
 
-Далее: `melody` → `wifi-sta` → `http` → `mcp`.
+Далее: `wifi-sta` → `http` → `mcp`.
+
+## Как залить на MCU только JS
+
+- `idf.py build`
+- `esptool.py --chip esp32s3 -p PORT write_flash 0x310000 build/js.bin`
+
+После прошивки — reset или `idf.py -p PORT monitor`.
 
 ## Если `idf.py build` падает на `mklittlefs: Permission denied`
 
