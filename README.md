@@ -3,7 +3,7 @@
 Демо для мастер-класса HolyJS:  
 **«JS, микроконтроллеры и ИИ: MCP выходит в реальный мир»**
 
-Текущий тег **`hello`**: BeShell (QuickJS) на ESP32-S3 и `console.log('hello from ESP32-S3')` в serial.
+Текущий тег **`stepper-tone`**: BeShell + класс `Stepper`, одна нота **A4** на **5 с**, затем silence.
 
 | | |
 |---|---|
@@ -11,15 +11,16 @@
 | IDF | **5.5.x** |
 | Target | `esp32s3` |
 | JS | LittleFS partition `js` → `/main.js` |
+| Stepper | EN **4** · STEP **5** · DIR **6** (PWM tone, DIR fixed CW) |
 
-Дальше: `stepper-tone` → `melody` → `wifi-sta` → `http` → `mcp`.
+Предыдущие: `hello`. Далее: `melody` → `wifi-sta` → `http` → `mcp`.
 
 ---
 
 ## Требования
 
 - Плата ESP32-S3 с **16MB flash** и **Octal PSRAM** (см. `sdkconfig.defaults`)
-- USB-кабель
+- Драйвер шаговика (STEP/DIR/EN) на пинах выше
 - [ESP-IDF 5.5](https://docs.espressif.com/projects/esp-idf/en/v5.5.2/esp32s3/get-started/index.html)
 
 ---
@@ -27,43 +28,76 @@
 ## Быстрый старт
 
 ```bash
-git clone -b hello https://github.com/andrewkuzmenko/holyjs-mcu-workshop.git mcu-js-holy-workshop
-cd mcu-js-holy-workshop   # или как вы назвали папку
+git clone -b stepper-tone https://github.com/andrewkuzmenko/holyjs-mcu-workshop.git mcu-js-holy-workshop
+cd mcu-js-holy-workshop
 
-. $IDF_PATH/export.sh             # Windows: export.bat / ESP-IDF PowerShell
+. $IDF_PATH/export.sh
 
 idf.py set-target esp32s3
 idf.py build
-idf.py -p PORT flash monitor
+idf.py flash monitor
 ```
 
-`PORT` — например `/dev/tty.usbmodem*` (macOS), `/dev/ttyACM0` (Linux), `COM3` (Windows).
-
-В мониторе ожидайте строку:
+В мониторе:
 
 ```text
-hello from ESP32-S3
+Stepper ready; playing A4 for 5000 ms
 ```
 
-(`console.log` зеркалируется в stdout через `Console::writeHandler` в `main/beshell-step.cpp` — иначе BeShell шлёт лог бинарным REPL-пакетом, и `idf.py monitor` его часто не показывает.)
+и ~5 с тона на моторе, затем silence.
+
+(`console.log` → stdout через `Console::writeHandler` в `main/beshell-step.cpp`.)
 
 Выход из monitor: `Ctrl+]`.
 
-Если строки нет: убедитесь, что прошился и раздел `js` (`idf.py flash` целиком, не только app), затем `idf.py -p PORT monitor`.
-
 `managed_components/`, `build/`, `sdkconfig` появятся при первой сборке (в git не коммитятся).
+
+---
+
+## Обновить только JS на плате
+
+Если C++ не менялся:
+
+```bash
+. $IDF_PATH/export.sh
+idf.py build
+parttool.py --port PORT write_partition --partition-name=js --input build/js.bin
+```
+
+Эквивалент через `esptool` (offset `0x310000` для текущего `partitions.csv`):
+
+```bash
+idf.py build
+esptool.py --chip esp32s3 -p PORT write_flash 0x310000 build/js.bin
+```
 
 ---
 
 ## Что в репозитории
 
 ```text
-js/main.js              — скрипт на устройстве
-main/beshell-step.cpp   — BeShell runtime + eval /main.js
-main/idf_component.yml  — зависимость become-cool/beshell
-partitions.csv          — раздел js (LittleFS)
-sdkconfig.defaults      — 16MB flash, Octal PSRAM
+js/main.js              — пины + new Stepper → init → playNote('A4', 5000)
+js/stepper.js           — class Stepper (tone; playSequence — тег melody)
+js/notes.js             — целые Гц A0–C8 для LEDC
+main/beshell-step.cpp   — BeShell + console mirror
+main/idf_component.yml  — become-cool/beshell
 ```
+
+Частота ноты задаётся через stock BeShell `gpio.pwm.config` (отдельного `setFreq` нет).
+
+```javascript
+import { Stepper } from '/stepper.js'
+
+const PIN_EN = 4
+const PIN_STEP = 5
+const PIN_DIR = 6
+
+const motor = new Stepper({ en: PIN_EN, step: PIN_STEP, dir: PIN_DIR })
+motor.init()
+motor.playNote('A4', 5000)
+```
+
+`durationMs`: `null`/`undefined` — играет до `stop()`; иначе clamp в **1..5000** мс.
 
 ---
 
@@ -77,6 +111,8 @@ sdkconfig.defaults      — 16MB flash, Octal PSRAM
 | `wifi-sta` | melody + Wi‑Fi STA |
 | `http` | + HTTP `/health` |
 | `mcp` | HTTP + MCP tools |
+
+Далее: `melody` → `wifi-sta` → `http` → `mcp`.
 
 ## Если `idf.py build` падает на `mklittlefs: Permission denied`
 

@@ -1,5 +1,6 @@
 idf_component_register(SRCS "beshell-step.cpp"
-                    INCLUDE_DIRS ".")
+                    INCLUDE_DIRS "."
+                    REQUIRES become-cool__beshell)
 
 # mklittlefs from the beshell component (downloaded by Component Manager on first build)
 set(BESHELL_TOOLS "${CMAKE_CURRENT_SOURCE_DIR}/../managed_components/become-cool__beshell/tools")
@@ -23,7 +24,7 @@ set(JS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../js")
 add_custom_command(
     OUTPUT "${JS_IMAGE}"
     COMMAND "${MKLITTLEFS}" -c "${JS_DIR}" -p 4096 -b 4096 -s 1048576 "${JS_IMAGE}"
-    DEPENDS "${JS_DIR}/main.js"
+    DEPENDS "${JS_DIR}/main.js" "${JS_DIR}/stepper.js" "${JS_DIR}/notes.js"
     VERBATIM
 )
 
