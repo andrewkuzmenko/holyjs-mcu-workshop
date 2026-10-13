@@ -1,0 +1,20 @@
+# ESP-IDF
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+dependencies.lock
+
+# CMake
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+*.cmake
+
+# IDE
+.idea/
+.vscode/
+
+# Project specific
+js.bin
+dump.bin
